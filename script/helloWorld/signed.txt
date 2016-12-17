@@ -1,0 +1,45 @@
+此部分主要说明如何进行数字签名，用到的工具为项目根目录下的makecert/makecert.exe
+方法如下（使用超级管理员运行cmd.exe）, 可使用 certmgr.msc 的个人--证书中查看颁发的证书
+
+1、使用 makecert.exe 为当前计算机创建本地证书颁发机构，使用如下命令
+E:\opensource\JetBrains\github\powershell-demo\makecert>makecert.exe -n "CN=PowerShell Oragation" -a sha1 -eku 1.3.6.1.5.5.7.3.3 -r -sv root.pvk root.cer -ss Root -sr localMachine
+
+注意："CN=PowerShell Local Certificate Root" 指的是证书的颁布机构，另外其他小版本号都不能错
+输入密码来加密自己的证书颁发机构
+
+
+2、由上一步创建的本地证书颁发机构颁发个人证书
+E:\opensource\JetBrains\github\powershell-demo\makecert>makecert.exe -pe -n "CN=PowerShell Test" -ss MY -a sha1 -eku 1.3.6.1.5.5.7.3.3 -iv root.pvk -ic root.cer
+
+
+3、打开Windows PowerShell ISE 使用命令查看当前用户的证书
+PS E:\opensource\JetBrains\github\powershell-demo\script\helloWorld> dir Cert:\CurrentUser\My -CodeSigningCert
+
+
+   PSParentPath:Microsoft.PowerShell.Security\Certificate::CurrentUser\My
+
+Thumbprint                                Subject
+----------                                -------
+DE2DC58C6A7B5DD6D602142B678ABDA89E6AE58B  CN=PowerShell User
+31A7F4F548905261E06F28697D34533A5BD2AA1F  CN=PowerShell Test
+
+
+4、查询需要的证书并把证书赋值给变量，以便对脚本添加数字签名时使用该证书变量
+PS E:\opensource\JetBrains\github\powershell-demo\script\helloWorld> $cert = dir Cert:\CurrentUser\My -CodeSigningCert | Where-Object {$_.Subject -match "CN=PowerShell Test"}
+
+
+5、进行数字签名
+PS E:\opensource\JetBrains\github\powershell-demo\script\helloWorld> Set-AuthenticodeSignature -FilePath ".\helloWorld.ps1" -Certificate $cert
+
+
+    目录: E:\opensource\JetBrains\github\powershell-demo\script\helloWorld
+
+
+SignerCertificate                         Status                                                 Path
+-----------------                         ------                                                 ----
+31A7F4F548905261E06F28697D34533A5BD2AA1F  Valid                                                  helloWorld.ps1
+
+
+6、进行完如上几个步骤，则对helloWorld.ps1的数字签名结束，可以在Windows PowerShell ISE中运行
+PS E:\opensource\JetBrains\github\powershell-demo\script\helloWorld> & .\helloWorld.ps1
+Welcome to PowerShell
